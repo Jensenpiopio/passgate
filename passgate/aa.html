@@ -1,57 +1,84 @@
-@{
-    ViewBag.Title = "WxTest";
-}
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8"/>
-    <title>扫描二维码</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=Yes" />
-    <script src="~/js/jquery1.7.2.js"></script>
-    <script src="https://res.wx.qq.com/open/js/jweixin-1.2.0.js"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=no, width=device-width">
+<meta content="yes" name="apple-mobile-web-app-capable" /> 
+<meta content="black" name="apple-mobile-web-app-status-bar-style" /> 
+<meta content="telephone=no" name="format-detection" /> 
+<meta content="email=no" name="format-detection" /><!--禁止Android中自动识别页面中的邮件地址--> 
+<title>扫一扫</title>
+<script src="js/jquery-1.10.2.min.js"></script> 
+<style>
+#video {
+    height: 400px;
+    width: 400px;
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+#canvas {
+    height: 400px;
+    width: 800px;
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+</style>  
+<video  id="video">
+<script>
+    var flag = true;
+    window.addEventListener("DOMContentLoaded", function () {
+        var video = document.getElementById("video"), canvas, context;
+        try {
+            canvas = document.createElement("canvas");
+            canvas.width = 640;
+            canvas.height = 480;
+            context = canvas.getContext("2d");
+        } catch (e) { alert("not support canvas!"); return; }
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+ 
+        if (navigator.getUserMedia)
+            navigator.getUserMedia(
+                { "video": true },
+                function (stream) {
+                    if (video.mozSrcObject !== undefined)video.mozSrcObject = stream;
+                    else video.src = ((window.URL || window.webkitURL || window.mozURL || window.msURL) && window.URL.createObjectURL(stream)) || stream;               
+                    video.play();
+                },
+                function (error) {
+                    alert("请检查是否存在或者开启摄像头");
+                    flag = false;
+                }
+            );
+        else alert("Native device media streaming (getUserMedia) not supported in this browser");
+       
+        setInterval(function () {
+        	if(!flag){
+        		return;
+        	}
+            context.drawImage(video, 0, 0, canvas.width = video.videoWidth, canvas.height = video.videoHeight);
+    		var image = canvas.toDataURL("image/png").replace("data:image/png;base64,", ""); 
+            $.ajax({
+				url : 'qRCodeAction_decoderQRCode.action',
+				async : false,
+				type : 'post',
+				data : {
+					'time' : (new Date()).toString(),
+					'img' : image
+				},
+				success : function(message) {
+					if(message!=null){
+					  flag=false;
+					  window.location.href='qRCodeActionshow.action?message='+message;
+					}
+				},
+		    });
+        }, 5000);
+    }, false);
+ </script> 
 </head>
 <body>
-<input type="button" class="test" value="微信扫一扫"/>
 </body>
 </html>
-<script>
-    $(document).ready(function () {
-      
-
-        wx.config({
-            debug: false, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印。
-            appId: '@ViewBag.AppID', // 必填，公众号的唯一标识
-            timestamp: @ViewBag.timestamp, // 必填，生成签名的时间戳    <%= Html.Encode(ViewData["timestamp" ]) %>
-            nonceStr: '@ViewBag.nonceStr', // 必填，生成签名的随机串
-            signature:'@ViewBag.signature', // 必填，签名
-            jsApiList: ['scanQRCode'] // 必填，需要使用的JS接口列表, 这里只需要调用扫一扫
-        });
-
-       
-        $(".test").click(function () {
-            var ua = navigator.userAgent.toLowerCase();
-            var isWeixin = ua.indexOf('micromessenger') !== -1;
-            if (!isWeixin) {
-                alert('请用微信打开连接，才可使用扫一扫');
-            }
-
-            wx.scanQRCode({
-                needResult: 1, // 默认为0，扫描结果由微信处理，1则直接返回扫描结果，
-                scanType: ["qrCode"], // 可以指定扫二维码还是一维码，默认二者都有
-                success: function (res) {
-                    // 扫码成功，跳转到二维码指定页面（res.resultStr为扫码返回的结果）            
-                    //  location.href = res.resultStr;
-                    var scan = res.resultStr;
-                    alert(scan);
-
-                },
-                error: function (res) {
-                    if (res.errMsg.indexOf('function_not_exist') > 0) {
-                        alert('当前版本过低，请进行升级');
-                    }
-                }
-            });
-        });
-     });
- 
-</script>
